@@ -60,7 +60,9 @@ exports.onItemAdded = functions.database.ref('/expenses/{groupId}/{expenseId}')
 					if(tokenSnapshot.exists())
 						tokens.push(tokenSnapshot.val());
                 });
-                console.log('There are', tokens.length, 'tokens to send notifications to.');
+
+				if (tokens.length == 0) return console.log('There are no tokens to send notifications to.');
+				console.log('There are', tokens.length, 'tokens to send notifications to.');
                 return admin.messaging().sendToDevice(tokens, payload).then(response => {
                     // For each message check if there was an error.
                     // const tokensToRemove = [];
@@ -76,7 +78,7 @@ exports.onItemAdded = functions.database.ref('/expenses/{groupId}/{expenseId}')
                         }
                     });
                     // return Promise.all(tokensToRemove);
-                })
+                });
             });
         });
     });
