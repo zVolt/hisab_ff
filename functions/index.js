@@ -7,14 +7,15 @@ admin.initializeApp(functions.config().firebase);
 //
 exports.onItemAdded = functions.database.ref('/expenses/{groupId}/{expenseId}')
     .onWrite(event => {
+
 		var expense = event.data.val();
+		if (!expense) {
+            return console.log(`item at ${event.resource} deleted`);
+        }
+
 		expense.id = event.data.key;
 		const groupId = event.params.groupId;
         const expenseId = event.params.expenseId;
-
-		if (!event.data.val()) {
-            return console.log(`${expense.description} deleted`);
-        }
 
         const getGroupPromise = admin.database().ref(`/groups/${expense.owner.id}/${groupId}`).once('value')
         const getMemberUsersPromise = admin.database().ref(`/shareWith/${groupId}`).once('value');
@@ -42,12 +43,12 @@ exports.onItemAdded = functions.database.ref('/expenses/{groupId}/{expenseId}')
             };
 			//update lastMsgName and lastMsgDesc content of the group
 			//this only updated the group info of the person created the expense, need to update all group nodes
-			var groupLastMsgAndDescList = [];
+			var groupLastMsgAndDescList = {};
 			const lastMsgName = expense.owner.name;
 			const lastMsgDesc = expense.amount.toString() + ' ' + expense.description;
 			//adding owner of expense
-			groupLastMsgAndDescList[`/groups/${userId}/${groupId}/lastMsgName`] = lastMsgName;
-			groupLastMsgAndDescList[`/groups/${userId}/${groupId}/lastMsgDesc`] = lastMsgDesc;
+			groupLastMsgAndDescList[`/groups/${expense.owner.id}/${groupId}/lastMsgName`] = lastMsgName;
+			groupLastMsgAndDescList[`/groups/${expense.owner.id}/${groupId}/lastMsgDesc`] = lastMsgDesc;
 			//adding owner of group
 			groupLastMsgAndDescList[`/groups/${group.moderator.id}/${groupId}/lastMsgName`] = lastMsgName;
 			groupLastMsgAndDescList[`/groups/${group.moderator.id}/${groupId}/lastMsgDesc`] = lastMsgDesc;
@@ -67,7 +68,7 @@ exports.onItemAdded = functions.database.ref('/expenses/{groupId}/{expenseId}')
             if (group.moderator.id !== expense.owner.id)
                 userTokensPromises.push(admin.database().ref(`/users/${group.moderator.id}/token`).once('value'));
 
-			userTokensPromises.push(admin.database.ref().update(groupLastMsgAndDescList));
+			userTokensPromises.push(admin.database().ref().update(groupLastMsgAndDescList));
 
 			//after all token fetching promises are complete
             return Promise.all(userTokensPromises).then(result => {
