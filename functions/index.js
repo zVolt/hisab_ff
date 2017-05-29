@@ -40,22 +40,39 @@ exports.onItemAdded = functions.database.ref('/expenses/{groupId}/{expenseId}')
                     'group_id': group.id
                 }
             };
+			//update lastMsgName and lastMsgDesc content of the group
+			//this only updated the group info of the person created the expense, need to update all group nodes
+			var groupLastMsgAndDescList = [];
+			const lastMsgName = expense.owner.name;
+			const lastMsgDesc = expense.amount.toString() + ' ' + expense.description;
+			//adding owner of expense
+			groupLastMsgAndDescList[`/groups/${userId}/${groupId}/lastMsgName`] = lastMsgName;
+			groupLastMsgAndDescList[`/groups/${userId}/${groupId}/lastMsgDesc`] = lastMsgDesc;
+			//adding owner of group
+			groupLastMsgAndDescList[`/groups/${group.moderator.id}/${groupId}/lastMsgName`] = lastMsgName;
+			groupLastMsgAndDescList[`/groups/${group.moderator.id}/${groupId}/lastMsgDesc`] = lastMsgDesc;
 
             //collect all token fetch promises in this array
-            userTokensPromises = [];
+            var userTokensPromises = [];
             usersSnapshot.forEach((userSnapshot, index) => {
                 const userUid = userSnapshot.key;
                 //add the user if he is not the owner of the expense being notified for
                 if (userUid !== expense.owner.id)
                     userTokensPromises.push(admin.database().ref(`/users/${userUid}/token`).once('value'));
+				//adding members to update lastMsgName and lastMsgDesc of the groups
+				groupLastMsgAndDescList[`/groups/${userUid}/${groupId}/lastMsgName`] = lastMsgName;
+				groupLastMsgAndDescList[`/groups/${userUid}/${groupId}/lastMsgDesc`] = lastMsgDesc;
             });
             //add the moderator of the group if he is not the owner of the expense being notified for
             if (group.moderator.id !== expense.owner.id)
                 userTokensPromises.push(admin.database().ref(`/users/${group.moderator.id}/token`).once('value'));
 
-            //after all toekn fetching promises are complete
+			userTokensPromises.push(admin.database.ref().update(groupLastMsgAndDescList));
+
+			//after all token fetching promises are complete
             return Promise.all(userTokensPromises).then(result => {
-                tokens = [];
+                result.pop(); //remove returned data from updating lastMsgDesc and lastMsgName properties if all group instance held under groupLastMsgAndDescList array
+                var tokens = [];
                 result.forEach((tokenSnapshot, index) => {
 					if(tokenSnapshot.exists())
 						tokens.push(tokenSnapshot.val());
