@@ -47,11 +47,9 @@ exports.onItemAdded = functions.database.ref('/expenses/{groupId}/{expenseId}')
 			const lastMsgName = expense.owner.name;
 			const lastMsgDesc = expense.amount.toString() + ' ' + expense.description;
 			//adding owner of expense
-			groupLastMsgAndDescList[`/groups/${expense.owner.id}/${groupId}/lastMsgName`] = lastMsgName;
-			groupLastMsgAndDescList[`/groups/${expense.owner.id}/${groupId}/lastMsgDesc`] = lastMsgDesc;
+			groupLastMsgAndDescList[`/groups/${expense.owner.id}/${groupId}/lastExpense`] = expense;
 			//adding owner of group
-			groupLastMsgAndDescList[`/groups/${group.moderator.id}/${groupId}/lastMsgName`] = lastMsgName;
-			groupLastMsgAndDescList[`/groups/${group.moderator.id}/${groupId}/lastMsgDesc`] = lastMsgDesc;
+			groupLastMsgAndDescList[`/groups/${group.moderator.id}/${groupId}/lastExpense`] = expense;
 
             //collect all token fetch promises in this array
             var userTokensPromises = [];
@@ -61,8 +59,7 @@ exports.onItemAdded = functions.database.ref('/expenses/{groupId}/{expenseId}')
                 if (userUid !== expense.owner.id)
                     userTokensPromises.push(admin.database().ref(`/users/${userUid}/token`).once('value'));
 				//adding members to update lastMsgName and lastMsgDesc of the groups
-				groupLastMsgAndDescList[`/groups/${userUid}/${groupId}/lastMsgName`] = lastMsgName;
-				groupLastMsgAndDescList[`/groups/${userUid}/${groupId}/lastMsgDesc`] = lastMsgDesc;
+				groupLastMsgAndDescList[`/groups/${userUid}/${groupId}/lastExpense`] = expense;
             });
             //add the moderator of the group if he is not the owner of the expense being notified for
             if (group.moderator.id !== expense.owner.id)
